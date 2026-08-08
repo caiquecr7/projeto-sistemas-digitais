@@ -78,3 +78,48 @@ O resultado sai no mesmo formato de 13 bits:
 | `frac_out` | 8 bits | significando (fração `0.f`) do resultado |
 
 ---
+
+### 2.5 Validação por simulação (GHDL + GTKWave)
+
+Antes de qualquer adaptação de hardware, o `fp_adder` foi validado isoladamente
+com um testbench que se verificava sozinho (`tb_fp_adder.vhd`), rodado no **GHDL** com
+visualização no **GTKWave**. O testbench aplica 7 casos, cada um exercitando um
+caminho diferente dos 4 estágios:
+
+| # | Conta | Caminho exercitado |
+|---|---|---|
+| 1 | 128 + 32 = 160 | alinhamento (shift à direita de 2) |
+| 2 | 192 + 192 = 384 | carry-out no estágio de soma |
+| 3 | 192 − 128 = 64 | normalização com 1 zero à esquerda |
+| 4 | 2,0625 − 2,0 = 0 | underflow (`leado > expb`), força zero |
+| 5 | 8 − 8 = −0 | cancelamento exato (expõe o zero negativo do algoritmo) |
+| 6 | 16384 + 0,996 = 16384 | alinhamento saturado (diferença de expoente ≥ 8) |
+| 7 | 132 − 128 = 4 | normalização com 5 zeros à esquerda (maior deslocamento testado) |
+
+A simulação terminou com todos os 7 casos aprovados:
+
+![Log completo do GHDL](../doc/img/ghdl_terminal_resumo.png)
+
+#### Observando o 4º estágio (normalização)
+
+O circuito faz o deslocamento à esquerda e conta os zeros corretamente. Podemos validar  esse ponto observando as formas de onda internas do `fp_adder` (sinais `leado`, `sum`,
+`sum_norm`, `expb` e `expn`), em dois pontos de exemplo:
+
+**Caso 3 — 1 zero à esquerda:**
+
+![Estágio de normalização — Caso 3](../doc/img/ondaCaso1.png)
+
+Com `sum` tendo o MSB útil na posição 6, o contador de prioridade acusa
+`leado = 1`; `sum_norm` aparece deslocado 1 casa à esquerda em relação a
+`sum`; e o expoente final é `expn = expb − leado = 8 − 1 = 7`, exatamente
+como esperado.
+
+**Caso 7 — 5 zeros à esquerda:**
+
+![Estágio de normalização — Caso 7](../doc/img/ondaCaso7.png)
+
+Aqui `leado = 5`, o maior deslocamento entre os 7 testes. `sum_norm`
+aparece deslocado 5 casas à esquerda e `expn = expb − leado = 8 − 5 = 3`.
+O circuito manteve a mesma identidade em todo o intervalo testado
+(0 a 7 zeros à esquerda), confirmando que o contador de prioridade e o
+deslocador funcionam corretamente inclusive no caso limite.
