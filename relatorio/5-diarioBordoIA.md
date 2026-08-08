@@ -1,4 +1,4 @@
-# 5. Diário de Bordo de IA
+## 5. Diário de Bordo de IA
 
 Utilizamos o **Claude** como ferramenta de apoio ao longo do
 projeto, principalmente para acelerar a escrita do testbench, apoiar a
@@ -6,14 +6,14 @@ refatoração do circuito de teste e tirar dúvidas sobre o algoritmo do livro.
 
 ---
 
-## 5.1 Como conduzimos o uso da ferramenta
+### 5.1 Como conduzimos o uso da ferramenta
 
 Não pedimos "faça o projeto", primeiro entendemos o
 artigo (Pong P. Chu, seção 3.7.4), depois usamos a IA para checar nosso
 entendimento, gerar rascunhos e, principalmente, para nos forçar a justificar
 cada decisão. além de termos utilizado para nos auxiliar no uso do questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema. 
 
-### Prompts utilizados (seleção)
+#### Prompts utilizados (seleção)
 
 Registramos abaixo os prompts mais representativos, na ordem em que a
 investigação evoluiu. A conversa completa está anexada em PDF.
@@ -53,9 +53,9 @@ investigação evoluiu. A conversa completa está anexada em PDF.
 
 ---
 
-## 5.2 Os erros da IA (alucinações) e como corrigimos
+### 5.2 Os erros da IA (alucinações) e como corrigimos
 
-### Erro 1 — Pinos e padrão elétrico assumidos de memória
+#### Erro 1 — Pinos e padrão elétrico assumidos de memória
 
 **O que a IA fez:** ao gerar o primeiro rascunho do arquivo de pinos
 (`.tcl`), a IA preencheu as localizações (`PIN_C14`, `PIN_C10`, etc.) a partir
@@ -79,7 +79,7 @@ displays, chaves, botões e LEDs, deixamos o manual no repositório dentro da pa
 A pinagem em si estava correta, mas só soubemos disso porque conferimos,
 não porque a IA garantiu.
 
-### Erro 2 — *Default binding* que quebrava só no GHDL
+#### Erro 2 — *Default binding* que quebrava só no GHDL
 
 **O que aconteceu:** o primeiro testbench compilava e rodava no Questa, mas no
 GHDL parava com um erro de *binding* (a instância do componente não achava a
@@ -93,7 +93,7 @@ Questa faz esse *bind* automaticamente e ela "assumiu" que bastava.
 FOR ALL : fp_adder_de10lite USE ENTITY work.fp_adder_de10lite(arch);
 ```
 
-### Erro 3 — Confusão entre "Analysis & Elaboration" e "Analysis & Synthesis"
+#### Erro 3 — Confusão entre "Analysis & Elaboration" e "Analysis & Synthesis"
 
 **O que aconteceu:** seguindo o roteiro, rodamos *Start Analysis & Elaboration*
 (como no Lab 2) e, ao tentar o *Partition Merge* para gerar o template do
@@ -113,7 +113,7 @@ vem do Lab 2 (onde a Elaboration bastava).
 
 ---
 
-## 5.4 Avaliação crítica da ferramenta
+### 5.4 Avaliação crítica da ferramenta
 
 **Onde ajudou de verdade:** acelerou a escrita do testbench e na retirada de dúvidas sobre o sistema. Também ajudou na apresentação da documentação: a formatação
 do Markdown e os diagramas em Mermaid.

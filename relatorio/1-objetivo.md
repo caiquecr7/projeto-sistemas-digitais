@@ -1,6 +1,6 @@
 # Tutorial: Implementação de Somador Ponto Flutuante na DE10 Lite
 
-**Autores:** Caique Castro Rodrigues, Gustavo Soares Gama Maldonado, Henrique Chave Lopes
+**Autores:** Caique Castro Rodrigues, Gustavo Soares Gama Maldonado, Henrique Chaves Lopes
 
 **Disciplina:** Sistemas Digitais Q2.2026
 
