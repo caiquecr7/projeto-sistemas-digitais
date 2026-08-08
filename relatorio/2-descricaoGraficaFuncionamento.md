@@ -2,7 +2,7 @@
 
 Nesta etapa, a descrição gráfica se refere ao código VHDL do somador apresentado no artigo (Pong P. Chu, Listing 3.19, a entidade `fp_adder`). Aqui usamos exatamente as portas do artigo, ainda sem nada específico da placa; a versão com os pinos da DE10 Lite aparece na Parte 3.
 
-O `fp_adder` recebe **dois números em ponto flutuante** (cada um com sinal, expoente e fração) e devolve **um único resultado**, também com sinal, expoente e fração.
+O `fp_adder` recebe dois números em ponto flutuante (cada um com sinal, expoente e fração) e devolve um único resultado, também com sinal, expoente e fração.
 
 ### 2.1 Diagrama de blocos do somador `fp_adder`
 
@@ -31,7 +31,7 @@ flowchart LR
 
 ### 2.2 Fluxo interno do núcleo `fp_adder` (4 estágios)
 
-O núcleo é **combinacional** e reproduz, em hardware, o que se faz no papel ao somar em notação científica.
+O núcleo é combinacional e reproduz, em hardware, o que se faz no papel ao somar em notação científica.
 
 ```mermaid
 flowchart TD
@@ -82,8 +82,8 @@ O resultado sai no mesmo formato de 13 bits:
 ### 2.5 Validação por simulação (GHDL + GTKWave)
 
 Antes de qualquer adaptação de hardware, o `fp_adder` foi validado isoladamente
-com um testbench que se verificava sozinho (`tb_fp_adder.vhd`), rodado no **GHDL** com
-visualização no **GTKWave**. O testbench aplica 7 casos, cada um exercitando um
+com um testbench que se verificava sozinho (`tb_fp_adder.vhd`), rodado no GHDL com
+visualização no GTKWave. O testbench aplica 7 casos, cada um exercitando um
 caminho diferente dos 4 estágios:
 
 | #   | Conta                 | Caminho exercitado                                               |
@@ -111,7 +111,7 @@ O circuito faz o deslocamento à esquerda e conta os zeros corretamente. Podemos
 
 Com `sum` tendo o MSB útil na posição 6, o contador de prioridade acusa
 `leado = 1`; `sum_norm` aparece deslocado 1 casa à esquerda em relação a
-`sum`; e o expoente final é `expn = expb − leado = 8 − 1 = 7`, exatamente
+`sum`; e o expoente final é `expn = expb − leado = 8 − 1 = 7`,
 como esperado.
 
 **Caso 7 — 5 zeros à esquerda:**

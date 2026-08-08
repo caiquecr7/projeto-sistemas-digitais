@@ -2,7 +2,7 @@
 
 ### Simulação
 
-A imagem abaixo é do Questa (ModelSim), rodando o testbench `fp_adder_de10lite_vhd_tst` em cima do top-level já com os pinos da placa. Não é só um dump de sinais: montamos o testbench para ser **autoverificável**: ele aplica uma sequência de combinações de switches e pulsos de `KEY`, compara o resultado que sai do `fp_adder` com o valor esperado calculado à parte, e vai contando num sinal chamado `erros` toda vez que gera diferença. No fim da simulação, o sinal `fim_sim` sobe para `1`.
+A imagem abaixo é do Questa (ModelSim), rodando o testbench `fp_adder_de10lite_vhd_tst` em cima do top-level já com os pinos da placa. Não é só um dump de sinais: montamos o testbench para ser autoverificável: ele aplica uma sequência de combinações de switches e pulsos de `KEY`, compara o resultado que sai do `fp_adder` com o valor esperado calculado à parte, e vai contando num sinal chamado `erros` toda vez que gera diferença. No fim da simulação, o sinal `fim_sim` sobe para `1`.
 
 No print, o cursor está em 1440 ns, perto do fim da simulação. Nesse instante os dois sinais de controle do testbench mostram exatamente o que a gente queria ver: `fim_sim = TRUE` e `erros = 0`. Rodou a bateria inteira de vetores de teste e nenhum resultado do `fp_adder` divergiu do valor esperado calculado à parte no testbench. Essa é uma verificação mais confiável do que apenas olhar a placa: aqui é o próprio testbench comparando automaticamente cada resultado, não uma pessoa conferindo à mão caso por caso.
 
@@ -189,72 +189,7 @@ Abaixo, imagens do funcionamento na placa para os 6 casos testados (superando os
 | 5    | 16384 + 0,984375 ≈ 16384 | Operando pequeno completamente "engolido" no alinhamento, por diferença de expoente grande demais para o formato.       |
 | 6    | 132 − 128 = 4            | Subtração com deslocamento grande na normalização (5 bits), o "muito deslocamento" pedido pela professora.              |
 
-#### Exemplo de referência: 128 + 24 = 152 (ilustra o método; não foi fotografado na bancada)
-
-Antes dos 6 casos testados na placa, vale mostrar como qualquer número é convertido para o formato de 13 bits, usando um exemplo simples: **128 + 24 = 152**. Escolhemos esses números porque encaixam exatamente nas chaves da placa e, além disso, o 24 mostra como usar os bits do meio da fração (`SW4` a `SW0`).
-
-##### Escrevendo um número no formato de 13 bits:
-
-Para colocar um número `N` (positivo) no formato, são três passos:
-
-1. **Sinal:** positivo → `0`.
-2. **Expoente:** pegue a primeira potência de 2 acima de `N`. Se ela é `2^e`, o campo de expoente é `e`.
-3. **Fração:** calcule `frac = arredonda( N / 2^e × 256 )`, que dá os 8 bits do significando.
-
-**Para o 128:**
-
-- Primeira potência de 2 acima de 128 → `2^8 = 256`, então expoente = 8 (`1000`).
-- `128 / 256 = 0,5`; `× 256 = 128` → fração = 128 = `10000000`.
-
-**Para o 24:**
-
-- Primeira potência de 2 acima de 24 → `2^5 = 32`, então expoente = 5 (`0101`).
-- `24 / 32 = 0,75`; `× 256 = 192` → fração = 192 = `11000000`.
-
-##### Quais chaves `SW` acionar:
-
-As 10 chaves são divididas assim: `SW9` é o sinal, `SW8` a `SW5` são o expoente (4 bits) e `SW4` a `SW0` são os 5 bits do meio da fração. O primeiro bit da fração é sempre fixo em `1` e os dois últimos bits são sempre fixos em `0`, então os 5 bits do meio das chaves correspondem aos bits `frac(6..2)` calculados acima.
-
-- Para o 128, a fração é `10000000`. Os bits do meio (`frac(6..2)`) são `00000`, ou seja, nenhuma chave da fração precisa subir.
-- Para o 24, a fração é `11000000`. Os bits do meio (`frac(6..2)`) são `10000`, ou seja, a primeira chave da fração (`SW4`) precisa subir, e as demais (`SW3` a `SW0`) ficam para baixo.
-
-| Operando | Valor | `SW9` (sinal) | `SW8`        | `SW7`        | `SW6`     | `SW5`        | `SW4`        | `SW3`     | `SW2`     | `SW1`     | `SW0`     |
-| -------- | ----- | ------------- | ------------ | ------------ | --------- | ------------ | ------------ | --------- | --------- | --------- | --------- |
-| A        | 128   | 0 (baixo)     | **1 (cima)** | 0 (baixo)    | 0 (baixo) | 0 (baixo)    | 0 (baixo)    | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
-| B        | 24    | 0 (baixo)     | 0 (baixo)    | **1 (cima)** | 0 (baixo) | **1 (cima)** | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
-
-##### Roteiro para testar na placa:
-
-1. Deixe só a chave **`SW8`** para cima (todas as outras para baixo) → isso monta o número 128.
-2. Aperte e solte **`KEY0`** para guardar esse valor como operando A.
-3. Agora deixe as chaves **`SW7`**, **`SW5`** e **`SW4`** para cima, e todas as outras para baixo → isso monta o número 24 como operando B.
-4. O resultado aparece na hora nos displays (o circuito é combinacional, não precisa apertar nada para ver a soma).
-
-##### A conta passo a passo (os 4 estágios):
-
-Com A = 128 (exp 8, frac `10000000`) e B = 24 (exp 5, frac `11000000`):
-
-1. **Ordenação:** o circuito vê que 128 (expoente 8) é o maior e 24 (expoente 5) é o menor.
-2. **Alinhamento:** a diferença de expoente é `8 − 5 = 3`, então a fração de 24 (`11000000`) desliza 3 casas para a direita e vira `00011000` (= 24).
-3. **Soma:** os sinais são iguais, então soma: `10000000` (128) `+ 00011000` (24) `= 010011000` (152). Não passou de 8 bits, então não teve "vai um".
-4. **Normalização:** a fração já começa com `1`, então não precisa deslocar nada. O expoente continua em 8.
-
-Resultado: sinal `+`, expoente 8, fração 152 (`10011000` = `0x98`). Em decimal: `152 / 256 × 2^8 = 152`. E de fato 128 + 24 = 152.
-
-##### Lendo o resultado nos displays:
-
-Com o mapeamento pedido pela professora (mostrando só o resultado):
-
-| Display | Mostra                    | Neste exemplo      |
-| ------- | ------------------------- | ------------------ |
-| `HEX3`  | sinal (traço se negativo) | apagado (positivo) |
-| `HEX2`  | expoente, em hexadecimal  | `8` (= 8)          |
-| `HEX1`  | 4 bits altos da fração    | `9`                |
-| `HEX0`  | 4 bits baixos da fração   | `8`                |
-
-Para voltar ao decimal, é só aplicar a fórmula do formato:
-
-$$\text{valor} = \frac{\text{fração}}{256} \times 2^{\text{expoente}} = \frac{\text{0x98}}{256} \times 2^{\text{0x8}} = \frac{152}{256} \times 256 = 152$$
+Para os casos a seguir, as conversões são montadas assim: sinal = 0 (positivo), expoente igual à primeira potência de 2 acima do número, e fração de 8 bits obtida por arredondar $N / 2^e \times 256$. As chaves SW mapeiam sinal, expoente e os cinco bits centrais da fração (bits 6 a 2, já que o primeiro é fixo em 1 e os dois últimos em 0). O somador executa ordenação, alinhamento, soma e normalização, e o resultado é exibido como sinal, expoente hexadecimal e dois dígitos hex da fração, com valor recuperado por $\text{fração} / 256 \times 2^{\text{expoente}}$.
 
 ---
 
