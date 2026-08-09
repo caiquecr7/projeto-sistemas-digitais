@@ -12,7 +12,7 @@ As portas do módulo de topo também mudaram por completo: `sw(7 downto 0)` e `b
 
 A distribuição dos displays foi combinada com a professora: `HEX3` mostra o sinal do resultado (apenas o segmento do meio aceso quando é negativo), `HEX2` mostra o expoente, `HEX1` e `HEX0` dividem a fração nos dois nibbles, e `HEX4`/`HEX5` ficaram sem uso. Os LEDs seguem uma lógica parecida: `LEDR(9)` repete o sinal do resultado, `LEDR(8)` acende quando o resultado deu zero, e os 8 restantes mostram a fração em binário puro, pensado para conferir visualmente o que o somador está calculando durante os testes práticos.
 
-A mudança mais estrutural, porém, foi transformar o operando A num registrador em vez de mantê-lo fixo. Com apenas 10 switches na placa, não é possível controlar os 26 bits dos dois operandos ao mesmo tempo, então A passou a ser carregado com `KEY0` (copia o valor atual das chaves) e limpo com `KEY1`. Foi essa mudança que abriu a possibilidade de testar qualquer par de números, inclusive os casos mais extremos, como carry-out e deslocamento grande na normalização.
+Também transformamos o operando A num registrador, em vez de mantê-lo fixo. Com apenas 10 switches na placa, não é possível controlar os 26 bits dos dois operandos ao mesmo tempo, então A passou a ser carregado com `KEY0` (copia o valor atual das chaves) e limpo com `KEY1`. Foi essa mudança que abriu a possibilidade de testar qualquer par de números, inclusive os casos mais extremos, como carry-out e deslocamento grande na normalização.
 
 Por fim, o bit mais significativo da fração do operando B foi travado em `'1'` (`fracB <= '1' & SW(4 downto 0) & "00"`), para garantir que a entrada sempre chega normalizada, como o formato exige.
 
@@ -20,11 +20,11 @@ Todas essas mudanças ficaram restritas ao módulo de topo: o `fp_adder.vhd`, co
 
 ### 3.2 O netlist sintetizado (RTL Viewer)
 
-Depois de compilar, podemos abrir o RTL Viewer do Quartus e ver o que ele montou a partir do VHDL: o circuito de portas e registradores de verdade que o compilador sintetizou. As duas capturas abaixo são desse visualizador, tiradas numa versão intermediária do projeto, de antes do ajuste combinado com a professora (o que tirou o monitor do operando A dos displays e deixou só o resultado ocupando `HEX0` a `HEX3`). Mesmo assim vale a pena mostrar, porque podemos enxergar de um jeito bem mais concreto boa parte do que foi descrito em texto até aqui.
+Depois de compilar, podemos abrir o RTL Viewer do Quartus e ver o que ele montou a partir do VHDL: o circuito de portas e registradores que o compilador sintetizou. As duas capturas abaixo são desse visualizador, tiradas numa versão intermediária do projeto, de antes do ajuste combinado com a professora (o que tirou o monitor do operando A dos displays e deixou só o resultado ocupando `HEX0` a `HEX3`). Mesmo assim vale a pena mostrar, porque podemos enxergar de um jeito bem mais concreto boa parte do que foi descrito em texto até aqui.
 
 Na primeira imagem (abaixo) podemos ver o circuito inteiro de uma vez:
 
-À esquerda, os três blocos de mux + registrador (`expA`, `signA`, `fracA`) são exatamente o processo do registrador do operando A, só que "desmontado" pelo sintetizador: cada bit passa primeiro por um multiplexador que decide entre manter o valor atual ou carregar um novo (a estrutura `if KEY(1)='0' ... elsif KEY(0)='0' ...` virou dois níveis de mux em cascata), e só depois entra no flip-flop de verdade, o bloco com `CLK` e `SCLR` (clock e clear síncrono).
+À esquerda, os três blocos de mux + registrador (`expA`, `signA`, `fracA`) são exatamente o processo do registrador do operando A, só que "desmontado" pelo sintetizador: cada bit passa primeiro por um multiplexador que decide entre manter o valor atual ou carregar um novo (a estrutura `if KEY(1)='0' ... elsif KEY(0)='0' ...` virou dois níveis de mux em cascata), e só depois entra no flip-flop propriamente dito, o bloco com `CLK` e `SCLR` (clock e clear síncrono).
 
 No meio, o bloco verde `fp_adder:fp_add_unit` é o núcleo somador entrando como componente. O RTL Viewer não abre ele por padrão nessa visão, só mostra a caixa com a lista de portas (`exp1`, `exp2`, `frac1`, `frac2`, `sign1`, `sign2` entrando; `exp_out`, `frac_out`, `sign_out` saindo).
 

@@ -13,7 +13,7 @@ artigo (Pong P. Chu, seção 3.7.4), depois usamos a IA para checar nosso
 entendimento, gerar rascunhos e, principalmente, para nos forçar a justificar
 cada decisão. Além de termos utilizado para nos auxiliar no uso do Questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema.
 
-#### Prompts utilizados (seleção)
+#### Prompts utilizados
 
 Registramos abaixo os prompts mais representativos, na ordem em que a
 investigação evoluiu. A conversa completa está anexada em PDF.
@@ -53,9 +53,9 @@ investigação evoluiu. A conversa completa está anexada em PDF.
 
 ---
 
-### 5.2 Os erros da IA (alucinações) e como corrigimos
+### 5.2 Os erros da IA
 
-#### Erro 1 — Pinos e padrão elétrico assumidos de memória
+#### Erro 1: Pinos e padrão elétrico assumidos de memória
 
 **O que a IA fez:** ao gerar o primeiro rascunho do arquivo de pinos
 (`.tcl`), a IA preencheu as localizações (`PIN_C14`, `PIN_C10`, etc.) a partir
@@ -67,19 +67,19 @@ os botões `KEY`.
 User Manual_ oficial da Terasic (Tabela 3-17 e tabelas de pinagem dos
 displays, chaves, botões e LEDs, deixamos o manual no repositório dentro da pasta "/doc/files"). Resultado da auditoria:
 
-| Item auditado           | O que o manual diz                               | O que estava no `.tcl`   | Situação   |
-| ----------------------- | ------------------------------------------------ | ------------------------ | ---------- |
-| `HEX0[0]`               | PIN_C14, "Seven Segment Digit 0[0]", 3.3-V LVTTL | PIN_C14                  | ✅ confere |
-| `HEX0[7]`               | PIN_D15, "Digit 0[7], **DP**" (ponto decimal)    | PIN_D15                  | ✅ confere |
-| `SW[0]`                 | PIN_C10                                          | PIN_C10                  | ✅ confere |
-| `KEY[0]`                | PIN_B8                                           | PIN_B8                   | ✅ confere |
-| I/O Standard geral      | **3.3-V LVTTL**                                  | 3.3-V LVTTL              | ✅ confere |
-| Polaridade dos displays | **anodo comum: segmento acende com nível BAIXO** | tratado no decodificador | ✅ confere |
+| Item auditado           | O que o manual diz                               | O que estava no `.tcl`   | Situação |
+| ----------------------- | ------------------------------------------------ | ------------------------ | -------- |
+| `HEX0[0]`               | PIN_C14, "Seven Segment Digit 0[0]", 3.3-V LVTTL | PIN_C14                  | confere  |
+| `HEX0[7]`               | PIN_D15, "Digit 0[7], **DP**" (ponto decimal)    | PIN_D15                  | confere  |
+| `SW[0]`                 | PIN_C10                                          | PIN_C10                  | confere  |
+| `KEY[0]`                | PIN_B8                                           | PIN_B8                   | confere  |
+| I/O Standard geral      | **3.3-V LVTTL**                                  | 3.3-V LVTTL              | confere  |
+| Polaridade dos displays | **anodo comum: segmento acende com nível BAIXO** | tratado no decodificador | confere  |
 
 A pinagem em si estava correta, mas só soubemos disso porque conferimos,
 não porque a IA garantiu.
 
-#### Erro 2 — _Default binding_ que quebrava só no GHDL
+#### Erro 2: _Default binding_ que quebrava só no GHDL
 
 **O que aconteceu:** o primeiro testbench compilava e rodava no Questa, mas no
 GHDL parava com um erro de _binding_ (a instância do componente não achava a
@@ -93,7 +93,7 @@ Questa faz esse _bind_ automaticamente e ela "assumiu" que bastava.
 FOR ALL : fp_adder_de10lite USE ENTITY work.fp_adder_de10lite(arch);
 ```
 
-#### Erro 3 — Confusão entre "Analysis & Elaboration" e "Analysis & Synthesis"
+#### Erro 3: Confusão entre "Analysis & Elaboration" e "Analysis & Synthesis"
 
 **O que aconteceu:** seguindo o roteiro, rodamos _Start Analysis & Elaboration_
 (como no Lab 2) e, ao tentar o _Partition Merge_ para gerar o template do
@@ -115,7 +115,7 @@ vem do Lab 2 (onde a Elaboration bastava).
 
 ### 5.4 Avaliação crítica da ferramenta
 
-**Onde ajudou de verdade:** acelerou a escrita do testbench e na retirada de dúvidas sobre o sistema. Também ajudou na apresentação da documentação: a formatação
+**Onde ajudou:** acelerou a escrita do testbench e na retirada de dúvidas sobre o sistema. Também ajudou na apresentação da documentação: a formatação
 do Markdown e os diagramas em Mermaid.
 
 **Onde não se pode confiar:** em qualquer fato específico da placa (pinos,

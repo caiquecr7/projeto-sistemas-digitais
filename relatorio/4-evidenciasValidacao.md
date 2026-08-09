@@ -14,7 +14,7 @@ Podemos confirmar o mecanismo olhando a trilha do `KEY`, visto que ela fica alte
 
 #### 4.2.1. Top-level adaptado para a DE10-Lite (`fp_adder_de10lite.vhd`)
 
-Esse é o módulo de topo que realmente vira bitstream e roda na placa. Ele substitui o `fp_adder_test` do livro (Listing 3.20), pensado para uma placa antiga com 8 chaves, 4 botões e display multiplexado, que não é compatível com a DE10-Lite. Por isso quase tudo aqui foi reescrito; a única peça que entra sem alteração é o próprio `fp_adder`, chamado como componente.
+Esse é o módulo de topo que vira bitstream e roda na placa. Ele substitui o `fp_adder_test` do livro (Listing 3.20), pensado para uma placa antiga com 8 chaves, 4 botões e display multiplexado, que não é compatível com a DE10-Lite. Por isso quase tudo aqui foi reescrito; a única peça que entra sem alteração é o próprio `fp_adder`, chamado como componente.
 
 ```vhdl
 library ieee;
@@ -112,17 +112,15 @@ begin
 end arch;
 ```
 
-**Portas.** Trocamos os nomes genéricos do livro pelos nomes reais dos pinos da placa: `SW`, `KEY`, `HEX0` a `HEX5` e `LEDR` já são reconhecidos automaticamente pelo Quartus a partir do `.qsf` da DE10-Lite. Também entrou o `MAX10_CLK1_50`, que não existia na versão original. Precisamos dele porque passou a ter um elemento sequencial no circuito.
+O bloco começa pelas portas da entidade, que trocam os nomes genéricos do livro pelos nomes reais dos pinos da placa: `SW`, `KEY`, `HEX0` a `HEX5` e `LEDR` já são reconhecidos automaticamente pelo Quartus a partir do `.qsf` da DE10-Lite. A única porta que não vinha da versão original é o clock `MAX10_CLK1_50`, que precisou entrar porque agora existe um elemento sequencial no circuito.
 
-**Operando B.** É ligação direta das chaves: `SW(9)` vira o sinal, `SW(8 downto 5)` vira o expoente. A fração é montada concatenando um `1` fixo (para garantir que o número entra normalizado), os 5 switches que sobraram, e dois `0` no final. Restam só 5 dos 8 bits realmente controláveis, oferecendo menor precisão, mas é a limitação de ter apenas 10 chaves.
+Logo em seguida, o operando B é ligado direto às chaves: `SW(9)` vira o sinal e `SW(8 downto 5)` vira o expoente. A fração é montada concatenando um `1` fixo (para garantir que o número entra normalizado), os 5 switches que sobraram e dois `0` no final, o que deixa apenas 5 dos 8 bits realmente controláveis. É menos precisão, mas é o preço de ter só 10 chaves para os dois operandos.
 
-**Operando A e o registrador.** Essa é a mudança mais importante da etapa. Na primeira versão, A era uma constante fixa; só que com 10 switches não dá para controlar os 26 bits dos dois operandos ao mesmo tempo. A solução foi transformar A num registrador: aperta `KEY0` e ele copia o que está nas chaves naquele instante; aperta `KEY1` e ele zera. É o único trecho sequencial do projeto inteiro, uma vez que todo o resto do circuito é combinacional puro e reage na hora, sem depender do clock.
+Por causa dessa mesma limitação de chaves, o operando A não pôde ficar fixo. Na primeira versão ele era uma constante, mas com 10 switches não dá para controlar os 26 bits dos dois operandos ao mesmo tempo. A saída foi transformá-lo num registrador: `KEY0` copia o que está nas chaves naquele instante e `KEY1` o zera. Esse é o único trecho sequencial do projeto; todo o resto é combinacional puro e reage na hora, sem depender do clock.
 
-**A instância do `fp_adder`.** Aqui há um `port map`, ligando `signA/expA/fracA` e `signB/expB/fracB` nas entradas e recolhendo `sign_out/exp_out/frac_out` na saída. Não tem lógica nova nessa parte, é apenas o componente da Etapa 1 sendo chamado sem mudanças.
+Com os dois operandos prontos, o `port map` apenas instancia o `fp_adder` da Etapa 1: liga `signA/expA/fracA` e `signB/expB/fracB` nas entradas e recolhe `sign_out/exp_out/frac_out` na saída. Não há lógica nova aqui, é o mesmo núcleo já validado sendo reaproveitado sem mudanças.
 
-**LEDs de depuração.** `LEDR(9)` repete o sinal do resultado, `LEDR(8)` acende quando a fração resulta em zero (útil para não precisar ficar decorando que `0x00` é zero), e os outros 8 mostram a fração crua em binário, bit a bit, como ela sai do somador.
-
-**Displays.** Cada instância de `hex_to_sseg_de10` recebe 4 bits e devolve o padrão de segmentos correspondente. `HEX2` fica com o expoente, `HEX1` e `HEX0` dividem a fração nos dois nibbles. `HEX3` é tratado à parte porque não precisa decodificar nada em hexadecimal: só acende o segmento do meio quando o resultado é negativo, e fica todo apagado quando é positivo. `HEX4` e `HEX5` sobraram sem uso depois que a professora pediu para tirar a memória do operando A da tela, então ficam apagados o tempo todo.
+O que sobra do arquivo é a exibição do resultado. Nos LEDs, `LEDR(9)` repete o sinal, `LEDR(8)` acende quando a fração dá zero (para não ter que decorar que `0x00` é zero) e os outros 8 mostram a fração crua em binário, bit a bit, como ela sai do somador. Nos displays, cada instância de `hex_to_sseg_de10` recebe 4 bits e devolve o padrão de segmentos: `HEX2` mostra o expoente e `HEX1`/`HEX0` dividem a fração nos dois nibbles. O `HEX3` é tratado à parte, porque não precisa decodificar hexadecimal nenhum: só acende o segmento do meio quando o resultado é negativo e fica apagado quando é positivo. Já `HEX4` e `HEX5` ficaram sem uso depois que a professora pediu para tirar a memória do operando A da tela, então permanecem apagados o tempo todo.
 
 #### 4.2.2. Decodificador de 7 segmentos adaptado (`hex_to_sseg_de10.vhd`)
 
@@ -168,9 +166,9 @@ begin
 end arch;
 ```
 
-**A tabela.** Para cada valor de 0 a F, guarda quais dos 7 segmentos (a até g) precisam acender para desenhar aquele número ou letra na tela. É a mesma tabela de qualquer display de 7 segmentos por aí, só copiando o padrão visual conhecido. Não tem cálculo nenhum envolvido, é uma tabela de consulta direta.
+A tabela guarda, para cada valor de 0 a F, quais dos 7 segmentos (a até g) precisam acender para desenhar aquele número ou letra na tela. É a mesma tabela de qualquer display de 7 segmentos por aí, copiada do padrão visual conhecido, sem cálculo nenhum envolvido, apenas consulta direta.
 
-**A inversão.** Na DE10-Lite os segmentos acendem com `0`, não com `1`: lógica ativa em nível baixo. Como é bem mais fácil escrever e revisar a tabela pensando em "`1` = aceso", ela foi montada do jeito normal e invertida de uma vez só no fim, com `not seg`. O ponto decimal (`dp`) segue a mesma regra, por isso o `not` também aparece na linha de baixo.
+O único ajuste específico da DE10-Lite é a inversão no fim. Nesta placa os segmentos acendem com `0`, e não com `1` (lógica ativa em nível baixo). Como é bem mais fácil escrever e revisar a tabela pensando em "`1` = aceso", ela foi montada do jeito natural e invertida de uma vez só no final, com `not seg`. O ponto decimal (`dp`) segue a mesma regra, e por isso o `not` também aparece na última linha.
 
 ---
 
@@ -215,12 +213,12 @@ Como A = B = 192, as mesmas chaves servem para os dois operandos:
 
 **Os 4 estágios:**
 
-Com A = B = 192 (exp 8, frac `11000000`):
+Com A = B = 192 (expoente 8, fração `11000000`):
 
-1. **Ordenação:** magnitudes iguais; a escolha de qual é "grande"/"pequeno" não afeta o resultado, já que os operandos são idênticos.
-2. **Alinhamento:** `exp_diff = 8 − 8 = 0`, então nenhuma fração precisa deslizar.
-3. **Soma:** sinais iguais → soma: `11000000` (192) `+ 11000000` (192) `= 110000000` (384 em 9 bits, com bit de carry `sum(8) = 1`).
-4. **Normalização:** como houve carry-out, o circuito desloca a fração 1 bit à direita e incrementa o expoente: `expn = 8 + 1 = 9`; `fracn = sum(8 downto 1) = 11000000` (192).
+1. **Ordenação:** as duas magnitudes são iguais; como os operandos são idênticos, tanto faz qual entra como maior.
+2. **Alinhamento:** os expoentes são iguais (8 e 8), então nenhuma fração precisa deslizar.
+3. **Soma:** sinais iguais, então soma: `11000000` (192) `+ 11000000` (192) `= 110000000` (384 em 9 bits). O `1` que sobra na frente é o carry: o resultado estourou uma casa.
+4. **Normalização:** como houve carry, o circuito desloca a fração 1 bit à direita e soma 1 ao expoente. O expoente final vira 8 + 1 = 9 e a fração volta a ser `11000000` (192).
 
 Resultado: sinal `+`, expoente 9, fração 192 (`11000000` = `0xC0`). Em decimal: `192 / 256 × 2^9 = 0,75 × 512 = 384`.
 
@@ -262,12 +260,12 @@ Este caso testa um deslocamento pequeno (1 bit) no 4º estágio, complementando 
 
 **Os 4 estágios:**
 
-Com A = 192 (exp 8, frac `11000000`, sinal +) e B = 128 (exp 8, frac `10000000`, sinal −):
+Com A = 192 (expoente 8, fração `11000000`, sinal +) e B = 128 (expoente 8, fração `10000000`, sinal −):
 
-1. **Ordenação:** mesmo expoente; compara frações: `192 > 128`, logo A é o "grande" (positivo) e B o "pequeno" (negativo).
-2. **Alinhamento:** `exp_diff = 8 − 8 = 0`, nenhuma fração desliza.
-3. **Subtração:** sinais diferentes → subtrai: `11000000` (192) `− 10000000` (128) `= 01000000` (64), sem carry (`sum(8) = 0`).
-4. **Normalização:** contando zeros à esquerda em `01000000`, o primeiro `1` aparece logo no bit 6 → `leado = 1`. Como `leado (1)` não é maior que `expb (8)`, é o caso normal: desloca a fração 1 bit à esquerda e decrementa o expoente: `expn = 8 − 1 = 7`; `fracn = 10000000` (128).
+1. **Ordenação:** mesmo expoente, então compara as frações: `192 > 128`, logo A é o maior (positivo) e B o menor (negativo).
+2. **Alinhamento:** os expoentes são iguais (8 e 8), nenhuma fração desliza.
+3. **Subtração:** sinais diferentes, então subtrai: `11000000` (192) `− 10000000` (128) `= 01000000` (64), sem carry.
+4. **Normalização:** contando os zeros à esquerda em `01000000`, o primeiro `1` aparece uma casa adiante, então é 1 zero à esquerda. Como 1 zero não passa do expoente do maior (8), é o caso normal: desloca a fração 1 bit à esquerda e tira 1 do expoente. O expoente final vira 8 − 1 = 7 e a fração vira `10000000` (128).
 
 Resultado: sinal `+`, expoente 7, fração 128 (`10000000` = `0x80`). Em decimal: `128 / 256 × 2^7 = 0,5 × 128 = 64`. E de fato 192 − 128 = 64.
 
@@ -310,14 +308,14 @@ Este caso mostra um segundo caminho para o resultado ser forçado a zero: não p
 
 **Os 4 estágios:**
 
-Com A = 2,0625 (exp 2, frac `10000100`, sinal +) e B = 2 (exp 2, frac `10000000`, sinal −):
+Com A = 2,0625 (expoente 2, fração `10000100`, sinal +) e B = 2 (expoente 2, fração `10000000`, sinal −):
 
-1. **Ordenação:** mesmo expoente; compara frações: `132 > 128`, logo A é o "grande" (positivo) e B o "pequeno" (negativo).
-2. **Alinhamento:** `exp_diff = 0`, nenhuma fração desliza.
-3. **Subtração:** sinais diferentes → subtrai: `10000100 − 10000000 = 00000100` (4), sem carry.
-4. **Normalização:** contando zeros à esquerda em `00000100`: o primeiro `1` só aparece no bit 2, então `leado = 5`. Como `leado (5) > expb (2)`, o circuito reconhece que o deslocamento necessário é maior do que o próprio expoente disponível (o número é pequeno demais para ser normalizado) e força `expn = 0`, `fracn = 0`.
+1. **Ordenação:** mesmo expoente, então compara as frações: `132 > 128`, logo A é o maior (positivo) e B o menor (negativo).
+2. **Alinhamento:** os expoentes são iguais, nenhuma fração desliza.
+3. **Subtração:** sinais diferentes, então subtrai: `10000100 − 10000000 = 00000100` (4), sem carry.
+4. **Normalização:** contando os zeros à esquerda em `00000100`, o primeiro `1` só aparece na terceira casa a partir do fim, então são 5 zeros à esquerda. Como os 5 zeros passam do expoente do maior (2), o circuito reconhece que o deslocamento necessário é maior do que o próprio expoente disponível (o número é pequeno demais para ser normalizado) e força expoente final 0 e fração 0.
 
-Resultado: expoente 0, fração 0 → zero. Como A (positivo) foi o "grande" desta vez, `sign_out = 0`, então o `HEX3` fica apagado, diferente do Caso 4, onde o "grande" era o operando negativo.
+Resultado: expoente 0, fração 0, ou seja, zero. Como o maior desta vez foi A (positivo), o sinal do resultado é positivo, então o `HEX3` fica apagado, diferente do Caso 4, onde o maior era o operando negativo.
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -356,16 +354,16 @@ O segundo operando é o mesmo valor (8), mas com o sinal negativo, para fazer `8
 
 Com A = +8 e B = −8 (ambos exp 4, frac `10000000`):
 
-1. **Ordenação:** como expoente e fração de A e B são idênticos, o circuito não encontra um "maior" estrito (`exp1&frac1 > exp2&frac2` é falso) e, pelo critério de desempate do VHDL, atribui B como número grande (`b`) e A como número pequeno (`s`); isso leva o sinal negativo de B para `signb`.
-2. **Alinhamento:** `exp_diff = 0`, nenhuma fração desliza.
-3. **Subtração:** sinais diferentes (`signb` negativo, `signs` positivo) → subtrai: `10000000 − 10000000 = 00000000`, sem carry.
-4. **Normalização:** o resultado é todo zero, então nenhum bit de `sum(7 downto 1)` está em `'1'` e o contador de zeros cai no caso padrão (`leado = "111"`, que em binário dá 7). Como `leado (7) > expb (4)`, o circuito reconhece que o número é pequeno demais para ser normalizado e força `expn = 0` e `fracn = 0`.
+1. **Ordenação:** expoente e fração de A e B são idênticos, então o circuito não encontra um maior estrito. Pelo critério de desempate do algoritmo, B entra como maior e A como menor, e é o sinal de B (negativo) que passa a valer como sinal do maior.
+2. **Alinhamento:** os expoentes são iguais, nenhuma fração desliza.
+3. **Subtração:** sinais diferentes (o maior é negativo, o menor positivo), então subtrai: `10000000 − 10000000 = 00000000`, sem carry.
+4. **Normalização:** o resultado é todo zero, então o contador de zeros à esquerda satura no seu valor máximo (7). Como esse 7 passa do expoente do maior (4), o circuito reconhece que o número é pequeno demais para ser normalizado e força expoente final 0 e fração 0.
 
 Resultado: expoente 0, fração 0, ou seja, zero.
 
-> **Por que o sinal "sobra" apesar do resultado ser zero?** Porque o `sign_out` é decidido logo no 1º estágio do `fp_adder`, antes de qualquer soma, apenas com uma comparação estrita (`>`) entre as magnitudes (`exp1&frac1` × `exp2&frac2`). Se os valores são exatamente iguais (como 8 e 8), ninguém é “maior”, o circuito cai no `else` e copia o sinal do segundo operando — que neste teste é negativo. Esse sinal fica gravado em `signb` e vai direto para `sign_out`, sem nunca ser reavaliado.
+> **Por que o sinal "sobra" apesar do resultado ser zero?** Porque o sinal do resultado é decidido logo no 1º estágio, antes de qualquer soma, apenas comparando as magnitudes dos dois operandos. Quando os valores são exatamente iguais (como 8 e 8), nenhum é maior, o circuito cai no critério de desempate e copia o sinal do segundo operando, que neste teste é negativo. Esse sinal fica gravado e vai direto para a saída, sem nunca ser reavaliado.
 >
-> O quarto estágio, bem mais tarde, detecta que o resultado é zero e zera `exp_out` e `frac_out`, mas já não consegue “avisar” o primeiro estágio para também zerar o sinal — ele já foi definido e propagado. Resultado: os dígitos mostram zero corretamente, mas o traço negativo pode continuar aparecendo no `HEX3`.
+> O quarto estágio, mais tarde, detecta que o resultado é zero e zera `exp_out` e `frac_out`, mas já não consegue “avisar” o primeiro estágio para também zerar o sinal, que já foi definido e propagado. Resultado: os dígitos mostram zero corretamente, mas o traço negativo pode continuar aparecendo no `HEX3`.
 
 | Display   | Mostra                     | Neste exemplo                               |
 | --------- | -------------------------- | ------------------------------------------- |
@@ -409,10 +407,10 @@ Este caso mostra o que acontece quando a diferença de expoentes entre os dois o
 
 Com A = 16384 (exp 15, frac `10000000`) e B = 0,984375 (exp 0, frac `11111100`):
 
-1. **Ordenação:** A tem expoente muitíssimo maior, então vira o "número grande"; B é o "pequeno".
-2. **Alinhamento:** `exp_diff = 15 − 0 = 15`. O deslocamento necessário é maior do que os 8 bits da fração de B: ela desliza inteira para fora e `fraca` vira `00000000`. O operando pequeno é completamente descartado nesta etapa, antes mesmo da soma.
+1. **Ordenação:** A tem expoente muito maior (15 contra 0), então entra como maior; B é o menor.
+2. **Alinhamento:** a diferença de expoentes é 15 − 0 = 15. O deslocamento necessário é maior do que os 8 bits da fração de B: ela desliza inteira para fora e a fração alinhada vira `00000000`. O operando menor é completamente descartado nesta etapa, antes mesmo da soma.
 3. **Soma:** sinais iguais → soma: `10000000 + 00000000 = 10000000` (128), sem carry.
-4. **Normalização:** a fração já começa com `1` → nenhum deslocamento. `expn = expb = 15`.
+4. **Normalização:** a fração já começa com `1`, então não há zeros à esquerda nem deslocamento. O expoente final é o mesmo do maior: 15.
 
 Resultado: sinal `+`, expoente 15, fração 128 (`0x80`), exatamente igual ao valor original de A. Somar 0,984 a 16384 não mudou nada visível no resultado, porque a diferença de magnitude é grande demais para o formato de 13 bits capturar.
 
@@ -459,10 +457,10 @@ Como é uma subtração (132 − 128), o 128 entra com o bit de sinal ligado (ne
 
 Com A = 132 (exp 8, frac `10000100`, sinal +) e B = 128 (exp 8, frac `10000000`, sinal −):
 
-1. **Ordenação:** mesmo expoente, então o circuito compara as frações: `132 > 128`, logo A (132) vira o "número grande" (`b`) e B (128) o "número pequeno" (`s`).
-2. **Alinhamento:** `exp_diff = 8 − 8 = 0`, nenhuma fração desliza.
-3. **Subtração:** sinais diferentes → subtrai: `10000100` (132) `− 10000000` (128) `= 00000100` (4), sem carry (`sum(8) = 0`).
-4. **Normalização:** contando os zeros à esquerda em `00000100`, o primeiro `1` só aparece no bit 2 → `leado = 5`. Como `leado (5)` não é maior que `expb (8)`, é o caso normal: o circuito desloca a fração 5 bits à esquerda e decrementa o expoente: `expn = 8 − 5 = 3`; `fracn = 10000000` (128).
+1. **Ordenação:** mesmo expoente, então o circuito compara as frações: `132 > 128`, logo A (132) entra como maior e B (128) como menor.
+2. **Alinhamento:** os expoentes são iguais (8 e 8), nenhuma fração desliza.
+3. **Subtração:** sinais diferentes, então subtrai: `10000100` (132) `− 10000000` (128) `= 00000100` (4), sem carry.
+4. **Normalização:** contando os zeros à esquerda em `00000100`, o primeiro `1` só aparece na terceira casa a partir do fim, então são 5 zeros à esquerda. Como 5 zeros não passam do expoente do maior (8), é o caso normal: o circuito desloca a fração 5 bits à esquerda e tira 5 do expoente. O expoente final vira 8 − 5 = 3 e a fração vira `10000000` (128).
 
 Resultado: sinal `+` (herdado do operando de maior magnitude, 132), expoente 3, fração 128 (`10000000` = `0x80`). Em decimal: `128 / 256 × 2^3 = 0,5 × 8 = 4`.
 
@@ -502,12 +500,12 @@ O segundo operando é o mesmo valor, só que negativo, pra fazer `992 + (−992)
 
 **Os 4 estágios:**
 
-Com A = +992 (exp 10, frac `11111000`) e B = −992 (exp 10, frac `11111000`):
+Com A = +992 (expoente 10, fração `11111000`) e B = −992 (expoente 10, fração `11111000`):
 
-1. **Ordenação:** magnitude idêntica nos dois operandos, então a comparação `exp1&frac1 > exp2&frac2` dá falso, e o VHDL cai no `else`: B vira o número grande (`b`) e A o número pequeno (`s`). Isso leva o sinal negativo de B para `signb`, o mesmo mecanismo do Caso 4.
-2. **Alinhamento:** `exp_diff = 10 − 10 = 0`, nenhuma fração desliza.
+1. **Ordenação:** magnitude idêntica nos dois operandos, então o circuito não encontra um maior estrito e, pelo critério de desempate, B entra como maior e A como menor. É o sinal negativo de B que passa a valer como sinal do maior, o mesmo mecanismo do Caso 4.
+2. **Alinhamento:** os expoentes são iguais (10 e 10), nenhuma fração desliza.
 3. **Subtração:** sinais diferentes, então `11111000 − 11111000 = 00000000`, sem carry.
-4. **Normalização:** o resultado é todo zero, então nenhum bit de `sum(7 downto 1)` está em `'1'`, e o contador de zeros cai no valor padrão do `case`: `leado = "111"` (7 em decimal). O sinal `leado` só tem 3 bits, então esse é o valor máximo que ele consegue representar, mesmo quando o resultado tem, na prática, 8 posições zeradas. O teste seguinte do código é `leado > expb`. Com `expb = 10`, a comparação `7 > 10` é falsa, então o circuito não entra no ramo que zera o resultado, e cai no ramo normal: `expn = expb − leado = 10 − 7 = 3`; `fracn = sum_norm`, que para `leado = "111"` é `sum(0) & "0000000"`, ou seja `00000000`.
+4. **Normalização:** o resultado é todo zero, então o contador de zeros à esquerda satura no seu máximo, 7 (o contador `leado` só tem 3 bits, então não consegue chegar a 8, mesmo com as 8 posições zeradas). O teste que decide o underflow é "zeros à esquerda maior que o expoente do maior". Aqui o expoente do maior é 10, e 7 não é maior que 10, então o circuito não entra no ramo que zera o resultado: cai no caso normal e calcula o expoente final como 10 − 7 = 3, com a fração normalizada dando `00000000`.
 
 Resultado: sinal negativo (herdado de B), expoente 3 (`0011`), fração 0. A fração e o sinal saem certos, mas o expoente sai 3 em vez de 0.
 
@@ -518,6 +516,6 @@ Resultado: sinal negativo (herdado de B), expoente 3 (`0011`), fração 0. A fra
 | `HEX1`  | 4 bits altos da fração   | `0`                                  |
 | `HEX0`  | 4 bits baixos da fração  | `0`                                  |
 
-Por que isso não acontece no Caso 4 (`8 − 8`)? Lá o expoente do 8 é 4. A mesma conta dá `leado = 7`, e o teste `leado (7) > expb (4)` é verdadeiro, então o circuito cai no ramo que força tudo a zero. O ponto de virada é o expoente 7: `leado (7) > expb (7)` já é falso, então o circuito cai no ramo normal e calcula `expn = 7 − 7 = 0`, que por coincidência ainda dá certo. O erro só fica visível a partir do expoente 8, quando `expn = expb − 7` deixa de dar zero.
+Por que isso não acontece no Caso 4 (`8 − 8`)? Lá o expoente do 8 é 4. A mesma conta dá 7 zeros à esquerda, e como 7 é maior que 4, o circuito cai no ramo que força tudo a zero. O ponto de virada é o expoente 7: com expoente do maior igual a 7, o 7 já não é maior, então o circuito cai no caso normal e calcula 7 − 7 = 0, que por coincidência ainda dá certo. O erro só fica visível a partir do expoente 8, quando a conta "expoente do maior − 7" deixa de dar zero.
 
-A causa é o próprio sinal `leado`, declarado no VHDL com só 3 bits (`signal leado : unsigned(2 downto 0)`). Três bits alcançam no máximo o valor 7, mas para sinalizar "nenhum bit 1 encontrado nos 8 bits da soma" seria preciso o valor 8, que não cabe nesse tamanho. O teste `leado > expb` só detecta esse underflow por coincidência, enquanto o expoente for pequeno o bastante. Uma pequena limitação do algoritmo original do livro.
+A causa é o próprio contador de zeros à esquerda, declarado no VHDL com só 3 bits (`signal leado : unsigned(2 downto 0)`). Três bits alcançam no máximo o valor 7, mas para sinalizar "nenhum `1` encontrado nos 8 bits do resultado" seria preciso o valor 8, que não cabe nesse tamanho. O teste de underflow só detecta o caso por coincidência, enquanto o expoente for pequeno o bastante. Uma pequena limitação do algoritmo original do livro.
