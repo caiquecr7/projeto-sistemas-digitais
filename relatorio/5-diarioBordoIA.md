@@ -11,7 +11,7 @@ refatoração do circuito de teste e tirar dúvidas sobre o algoritmo do livro.
 Não pedimos "faça o projeto", primeiro entendemos o
 artigo (Pong P. Chu, seção 3.7.4), depois usamos a IA para checar nosso
 entendimento, gerar rascunhos e, principalmente, para nos forçar a justificar
-cada decisão. além de termos utilizado para nos auxiliar no uso do questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema.
+cada decisão. Além de termos utilizado para nos auxiliar no uso do questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema.
 
 #### Prompts utilizados (seleção)
 

@@ -10,7 +10,7 @@
 
 ## 1. Objetivo do Projeto
 
-Este projeto adapta o **somador de ponto flutuante simplificado de 13 bits** do livro didático (Pong P. Chu, _FPGA Prototyping by VHDL Examples_, Listings 3.19 e 3.20) para a placa **Terasic DE10-Lite**, que usa a FPGA Intel MAX 10 (modelo `10M50DAF484C7G`). A ideia é passar por todo o caminho: sintetizar e simular o circuito em VHDL e, no fim, rodar ele na placa de verdade.
+Este projeto adapta o somador de ponto flutuante simplificado de 13 bits do livro didático (Pong P. Chu, _FPGA Prototyping by VHDL Examples_, Listings 3.19 e 3.20) para a placa Terasic DE10-Lite, que usa a FPGA Intel MAX 10 (modelo `10M50DAF484C7G`). O projeto percorre todas as etapas do fluxo: síntese, simulação e, por fim, execução na placa física.
 
 ### Formato numérico de 13 bits
 

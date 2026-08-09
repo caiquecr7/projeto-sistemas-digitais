@@ -514,3 +514,52 @@ Resultado: sinal `+` (herdado do operando de maior magnitude, 132), expoente **3
 ![Caso 6: 132−128, deslocamento de 5 bits, testado na placa](../doc/img//caso6_132menos128_muitodeslocamento.png)
 
 ---
+
+#### Caso 7 (sem foto): 992 − 992 = 0, mas o expoente não zera
+
+Este caso descobrimos durante a apresentação do trabalho, e o descrevemos aqui mais como uma curiosidade, por isso não registramos foto. Basicamente, para alguns números, quando subtraídos de si mesmos, o resultado do expoente é diferente de zero, como descrito a seguir para o número 992.
+
+##### 1. Escrevendo os números no formato de 13 bits
+
+Para o 992: a primeira potência de 2 acima dele é `2^10 = 1024`, então o expoente é **10** (`1010`). `992 / 1024 = 0,96875`, e multiplicando por 256 dá `248`, então a fração é **248** (`11111000`).
+
+O segundo operando é o mesmo valor, só que negativo, pra fazer `992 + (−992)`.
+
+##### 2. Quais chaves `SW` acionar
+
+| Operando | Valor | `SW9` (sinal) | `SW8`        | `SW7`     | `SW6`        | `SW5`     | `SW4`        | `SW3`        | `SW2`        | `SW1`        | `SW0`     |
+| -------- | ----- | ------------- | ------------ | --------- | ------------ | --------- | ------------ | ------------ | ------------ | ------------ | --------- |
+| A        | +992  | 0 (baixo)     | **1 (cima)** | 0 (baixo) | **1 (cima)** | 0 (baixo) | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | 0 (baixo) |
+| B        | −992  | **1 (cima)**  | **1 (cima)** | 0 (baixo) | **1 (cima)** | 0 (baixo) | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | 0 (baixo) |
+
+##### 3. Roteiro para testar na placa
+
+1. Suba `SW8` e `SW6` (expoente 10), demais chaves de expoente para baixo.
+2. Suba `SW4`, `SW3`, `SW2` e `SW1` (fração 248), deixe `SW0` para baixo.
+3. Aperte e solte `KEY0` para guardar 992 como operando A.
+4. Suba também `SW9` (sinal negativo), mantendo o resto igual. Isso representa −992 como operando B.
+5. O resultado aparece direto nos displays.
+
+##### 4. A conta passo a passo (os 4 estágios)
+
+Com A = +992 (exp 10, frac `11111000`) e B = −992 (exp 10, frac `11111000`):
+
+1. **Ordenação:** magnitude idêntica nos dois operandos, então a comparação `exp1&frac1 > exp2&frac2` dá falso, e o VHDL cai no `else`: **B** vira o número grande (`b`) e **A** o número pequeno (`s`). Isso leva o sinal negativo de B para `signb`, o mesmo mecanismo do Caso 4.
+2. **Alinhamento:** `exp_diff = 10 − 10 = 0`, nenhuma fração desliza.
+3. **Subtração:** sinais diferentes, então `11111000 − 11111000 = 00000000`, sem carry.
+4. **Normalização:** o resultado é todo zero, então nenhum bit de `sum(7 downto 1)` está em `'1'`, e o contador de zeros cai no valor padrão do `case`: `leado = "111"` (7 em decimal). O sinal `leado` só tem 3 bits, então esse é o valor máximo que ele consegue representar, mesmo quando o resultado tem, na prática, 8 posições zeradas. O teste seguinte do código é `leado > expb`. Com `expb = 10`, a comparação `7 > 10` é falsa, então o circuito não entra no ramo que zera o resultado, e cai no ramo normal: `expn = expb − leado = 10 − 7 = 3`; `fracn = sum_norm`, que para `leado = "111"` é `sum(0) & "0000000"`, ou seja `00000000`.
+
+Resultado: sinal negativo (herdado de B), expoente **3** (`0011`), fração **0**. A fração e o sinal saem certos, mas o expoente sai 3 em vez de 0.
+
+##### 5. Lendo o resultado nos displays
+
+| Display | Mostra                   | Neste exemplo                        |
+| ------- | ------------------------ | ------------------------------------ |
+| `HEX3`  | sinal                    | traço aceso (negativo, herdado de B) |
+| `HEX2`  | expoente, em hexadecimal | `3` (errado, devia ser `0`)          |
+| `HEX1`  | 4 bits altos da fração   | `0`                                  |
+| `HEX0`  | 4 bits baixos da fração  | `0`                                  |
+
+Por que isso não acontece no Caso 4 (`8 − 8`)? Lá o expoente do 8 é 4. A mesma conta dá `leado = 7`, e o teste `leado (7) > expb (4)` é verdadeiro, então o circuito cai no ramo que força tudo a zero. O ponto de virada é o expoente 7: `leado (7) > expb (7)` já é falso, então o circuito cai no ramo normal e calcula `expn = 7 − 7 = 0`, que por coincidência ainda dá certo. O erro só fica visível a partir do expoente 8, quando `expn = expb − 7` deixa de dar zero.
+
+A causa é o próprio sinal `leado`, declarado no VHDL com só 3 bits (`signal leado : unsigned(2 downto 0)`). Três bits alcançam no máximo o valor 7, mas para sinalizar "nenhum bit 1 encontrado nos 8 bits da soma" seria preciso o valor 8, que não cabe nesse tamanho. O teste `leado > expb` só detecta esse underflow por coincidência, enquanto o expoente for pequeno o bastante. Não é erro do grupo, é limitação do algoritmo original do livro.

@@ -31,7 +31,7 @@ flowchart LR
 
 ### 2.2 Fluxo interno do núcleo `fp_adder` (4 estágios)
 
-O núcleo é combinacional e reproduz, em hardware, o que se faz no papel ao somar em notação científica.
+O núcleo é puramente combinacional, dividido em 4 estágios.
 
 ```mermaid
 flowchart TD
@@ -82,7 +82,7 @@ O resultado sai no mesmo formato de 13 bits:
 ### 2.5 Validação por simulação (GHDL + GTKWave)
 
 Antes de qualquer adaptação de hardware, o `fp_adder` foi validado isoladamente
-com um testbench que se verificava sozinho (`tb_fp_adder.vhd`), rodado no GHDL com
+com um testbench autoverificável (`tb_fp_adder.vhd`), rodado no GHDL com
 visualização no GTKWave. O testbench aplica 7 casos, cada um exercitando um
 caminho diferente dos 4 estágios:
 
