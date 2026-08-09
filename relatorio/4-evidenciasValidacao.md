@@ -1,20 +1,20 @@
 ## 4. Evidências de Validação
 
-### Simulação
+### 4.1 Simulação
 
-A imagem abaixo é do Questa (ModelSim), rodando o testbench `fp_adder_de10lite_vhd_tst` em cima do top-level já com os pinos da placa. Não é só um dump de sinais: montamos o testbench para ser autoverificável: ele aplica uma sequência de combinações de switches e pulsos de `KEY`, compara o resultado que sai do `fp_adder` com o valor esperado calculado à parte, e vai contando num sinal chamado `erros` toda vez que gera diferença. No fim da simulação, o sinal `fim_sim` sobe para `1`.
+A imagem abaixo é do Questa (ModelSim), rodando o testbench `fp_adder_de10lite_vhd_tst` em cima do top-level já com os pinos da placa. Montamos o testbench para ser autoverificável. Ele aplica uma sequência de combinações de switches e pulsos de `KEY`, compara o resultado que sai do `fp_adder` com o valor esperado calculado à parte, e vai contando num sinal chamado `erros` toda vez que gera diferença. No fim da simulação, o sinal `fim_sim` sobe para `1`.
 
-No print, o cursor está em 1440 ns, perto do fim da simulação. Nesse instante os dois sinais de controle do testbench mostram exatamente o que a gente queria ver: `fim_sim = TRUE` e `erros = 0`. Rodou a bateria inteira de vetores de teste e nenhum resultado do `fp_adder` divergiu do valor esperado calculado à parte no testbench. Essa é uma verificação mais confiável do que apenas olhar a placa: aqui é o próprio testbench comparando automaticamente cada resultado, não uma pessoa conferindo à mão caso por caso.
+No print, o cursor está em 1440 ns, perto do fim da simulação. Nesse instante os dois sinais de controle do testbench mostram o que queríamos ver: `fim_sim = TRUE` e `erros = 0`. Todos os vetores de teste rodaram e nenhum resultado do `fp_adder` divergiu do valor esperado calculado à parte no testbench. Essa é uma verificação mais confiável do que apenas olhar a placa, pois o próprio testbench compara automaticamente cada resultado, em vez de uma pessoa conferir à mão caso por caso.
 
-Podemos confirmar o mecanismo olhando a trilha do `KEY`: ela fica alternando entre o valor `3` (`"11"`, os dois botões soltos, o estado parado entre um vetor e outro) e o valor `2` (`"10"`, ou seja `KEY(0) = '0'` pressionado) repetidas vezes ao longo da simulação, que é justamente o `KEY0` carregando um novo operando A antes de cada novo teste. Perto do fim aparece também um único pulso com o valor `1` (`"01"`, `KEY(1) = '0'`): o `KEY1` limpando o operando A, provavelmente um vetor à parte só pra conferir que o clear funciona. Contando essas trocas junto com as mudanças na trilha de `SW`, dá pra ver mais de dez configurações de entrada diferentes passando ao longo da simulação, cada uma seguida do pulso de `KEY` correspondente, o mesmo mecanismo que a gente testou na mão na Etapa 3, só que aqui automatizado.
+Podemos confirmar o mecanismo olhando a trilha do `KEY`, visto que ela fica alternando entre o valor `3` (`"11"`, os dois botões soltos, o estado parado entre um vetor e outro) e o valor `2` (`"10"`, ou seja `KEY(0) = '0'` pressionado) repetidas vezes ao longo da simulação, que é justamente o `KEY0` carregando um novo operando A antes de cada novo teste. Perto do fim aparece também um único pulso com o valor `1` (`"01"`, `KEY(1) = '0'`): o `KEY1` limpando o operando A, um vetor à parte só pra conferir que o clear funciona. Contando essas trocas junto com as mudanças na trilha de `SW`, podemos ver mais de dez configurações de entrada diferentes passando ao longo da simulação, cada uma seguida do pulso de `KEY` correspondente, o mesmo mecanismo que a gente testou na mão na Etapa 3, porém automatizado.
 
 ![Simulação no Questa: testbench autoverificável, erros = 0 ao final da execução](../doc/img/simulacao_testbench_autocheck.png)
 
-### Código VHDL Final
+### 4.2 Código VHDL Final
 
-#### 1. Top-level adaptado para a DE10-Lite (`fp_adder_de10lite.vhd`)
+#### 4.2.1. Top-level adaptado para a DE10-Lite (`fp_adder_de10lite.vhd`)
 
-Esse é o módulo de topo: o que realmente vira bitstream e roda na placa. Ele substitui o `fp_adder_test` do livro (Listing 3.20), pensado para uma placa antiga com 8 chaves, 4 botões e display multiplexado, que não é compatível com a DE10-Lite. Por isso quase tudo aqui foi reescrito; a única peça que entra sem alteração é o próprio `fp_adder`, chamado como componente.
+Esse é o módulo de topo que realmente vira bitstream e roda na placa. Ele substitui o `fp_adder_test` do livro (Listing 3.20), pensado para uma placa antiga com 8 chaves, 4 botões e display multiplexado, que não é compatível com a DE10-Lite. Por isso quase tudo aqui foi reescrito; a única peça que entra sem alteração é o próprio `fp_adder`, chamado como componente.
 
 ```vhdl
 library ieee;
@@ -112,19 +112,19 @@ begin
 end arch;
 ```
 
-**Portas.** Trocamos os nomes genéricos do livro pelos nomes reais dos pinos da placa: `SW`, `KEY`, `HEX0` a `HEX5` e `LEDR` já são reconhecidos automaticamente pelo Quartus a partir do `.qsf` da DE10-Lite. Também entrou o `MAX10_CLK1_50`, que não existia na versão original: precisamos dele porque agora tem um elemento sequencial no circuito.
+**Portas.** Trocamos os nomes genéricos do livro pelos nomes reais dos pinos da placa: `SW`, `KEY`, `HEX0` a `HEX5` e `LEDR` já são reconhecidos automaticamente pelo Quartus a partir do `.qsf` da DE10-Lite. Também entrou o `MAX10_CLK1_50`, que não existia na versão original. Precisamos dele porque passou a ter um elemento sequencial no circuito.
 
-**Operando B.** Não tem segredo, é ligação direta das chaves: `SW(9)` vira o sinal, `SW(8 downto 5)` vira o expoente. A fração é montada concatenando um `1` fixo (para garantir que o número entra normalizado), os 5 switches que sobraram, e dois `0` no final. Restam só 5 dos 8 bits realmente controláveis, mas é o que dá para fazer com 10 chaves.
+**Operando B.** É ligação direta das chaves: `SW(9)` vira o sinal, `SW(8 downto 5)` vira o expoente. A fração é montada concatenando um `1` fixo (para garantir que o número entra normalizado), os 5 switches que sobraram, e dois `0` no final. Restam só 5 dos 8 bits realmente controláveis, oferecendo menor precisão, mas é a limitação de ter apenas 10 chaves.
 
-**Operando A e o registrador.** Essa é a mudança mais importante da etapa. Na primeira versão, A era uma constante fixa; só que com 10 switches não dá para controlar os 26 bits dos dois operandos ao mesmo tempo. A solução foi transformar A num registrador: aperta `KEY0` e ele copia o que está nas chaves naquele instante; aperta `KEY1` e ele zera. É o único trecho sequencial do projeto inteiro: todo o resto do circuito é combinacional puro e reage na hora, sem depender do clock.
+**Operando A e o registrador.** Essa é a mudança mais importante da etapa. Na primeira versão, A era uma constante fixa; só que com 10 switches não dá para controlar os 26 bits dos dois operandos ao mesmo tempo. A solução foi transformar A num registrador: aperta `KEY0` e ele copia o que está nas chaves naquele instante; aperta `KEY1` e ele zera. É o único trecho sequencial do projeto inteiro, uma vez que todo o resto do circuito é combinacional puro e reage na hora, sem depender do clock.
 
-**A instância do `fp_adder`.** Aqui é só um `port map`, ligando `signA/expA/fracA` e `signB/expB/fracB` nas entradas e recolhendo `sign_out/exp_out/frac_out` na saída. Não tem lógica nova nessa parte: é literalmente o componente da Etapa 1 sendo chamado sem mudanças.
+**A instância do `fp_adder`.** Aqui há um `port map`, ligando `signA/expA/fracA` e `signB/expB/fracB` nas entradas e recolhendo `sign_out/exp_out/frac_out` na saída. Não tem lógica nova nessa parte, é apenas o componente da Etapa 1 sendo chamado sem mudanças.
 
 **LEDs de depuração.** `LEDR(9)` repete o sinal do resultado, `LEDR(8)` acende quando a fração resulta em zero (útil para não precisar ficar decorando que `0x00` é zero), e os outros 8 mostram a fração crua em binário, bit a bit, como ela sai do somador.
 
 **Displays.** Cada instância de `hex_to_sseg_de10` recebe 4 bits e devolve o padrão de segmentos correspondente. `HEX2` fica com o expoente, `HEX1` e `HEX0` dividem a fração nos dois nibbles. `HEX3` é tratado à parte porque não precisa decodificar nada em hexadecimal: só acende o segmento do meio quando o resultado é negativo, e fica todo apagado quando é positivo. `HEX4` e `HEX5` sobraram sem uso depois que a professora pediu para tirar a memória do operando A da tela, então ficam apagados o tempo todo.
 
-#### 2. Decodificador de 7 segmentos adaptado (`hex_to_sseg_de10.vhd`)
+#### 4.2.2. Decodificador de 7 segmentos adaptado (`hex_to_sseg_de10.vhd`)
 
 Esse módulo não muda de teste para teste: é somente a tabela-verdade que transforma 4 bits num padrão de 7 segmentos. A parte que precisou de atenção foi adaptar para a polaridade da DE10-Lite.
 
@@ -172,11 +172,9 @@ end arch;
 
 **A inversão.** Na DE10-Lite os segmentos acendem com `0`, não com `1`: lógica ativa em nível baixo. Como é bem mais fácil escrever e revisar a tabela pensando em "`1` = aceso", ela foi montada do jeito normal e invertida de uma vez só no fim, com `not seg`. O ponto decimal (`dp`) segue a mesma regra, por isso o `not` também aparece na linha de baixo.
 
-> **Observação:** o arquivo `fp_adder.vhd` permaneceu exatamente como no original, apenas com correções de aspas e operadores que o PDF do livro havia distorcido. Nenhuma lógica matemática foi alterada.
-
 ---
 
-### Funcionamento na Placa
+### 4.3 Funcionamento na Placa
 
 Abaixo, imagens do funcionamento na placa para os 6 casos testados (superando os 4 casos mínimos, incluindo casos com carry-out e com deslocamento grande na normalização).
 
@@ -189,7 +187,7 @@ Abaixo, imagens do funcionamento na placa para os 6 casos testados (superando os
 | 5    | 16384 + 0,984375 ≈ 16384 | Operando pequeno completamente "engolido" no alinhamento, por diferença de expoente grande demais para o formato.       |
 | 6    | 132 − 128 = 4            | Subtração com deslocamento grande na normalização (5 bits), o "muito deslocamento" pedido pela professora.              |
 
-Para os casos a seguir, as conversões são montadas assim: sinal = 0 (positivo), expoente igual à primeira potência de 2 acima do número, e fração de 8 bits obtida por arredondar $N / 2^e \times 256$. As chaves SW mapeiam sinal, expoente e os cinco bits centrais da fração (bits 6 a 2, já que o primeiro é fixo em 1 e os dois últimos em 0). O somador executa ordenação, alinhamento, soma e normalização, e o resultado é exibido como sinal, expoente hexadecimal e dois dígitos hex da fração, com valor recuperado por $\text{fração} / 256 \times 2^{\text{expoente}}$.
+Para os casos a seguir, as conversões são montadas assim: sinal = 0 (positivo), expoente igual à primeira potência de 2 acima do número, e fração de 8 bits obtida por arredondar $N / 2^e \times 256$. As chaves SW mapeiam sinal, expoente e os cinco bits centrais da fração (bits 6 a 2, já que o primeiro é fixo em 1 e os dois últimos em 0). O somador executa ordenação, alinhamento, soma e normalização, e o resultado é exibido como sinal, expoente hexadecimal e dois dígitos hex da fração, com valor recuperado por $\text{fração} / 256 \times 2^{\text{expoente}}$. O método será esclarecido em cada caso isolado.
 
 ---
 
@@ -197,14 +195,10 @@ Para os casos a seguir, as conversões são montadas assim: sinal = 0 (positivo)
 
 Este caso força um _carry-out_ na soma dos significandos, testando o primeiro segmento de decisão da normalização (incremento do expoente).
 
-##### Escrevendo os números no formato de 13 bits:
-
 Os dois operandos são iguais: 192.
 
-- Primeira potência de 2 acima de 192 → `2^8 = 256`, então **expoente = 8** (`1000`).
-- `192 / 256 = 0,75`; `× 256 = 192` → fração = 192 = `11000000`.
-
-##### Quais chaves `SW` acionar:
+- Primeira potência de 2 acima de 192 → `2^8 = 256`, então expoente = 8 (binário `1000`).
+- `192 / 256 = 0,75`; `× 256 = 192` → fração = 192 = binário `11000000`.
 
 Como A = B = 192, as mesmas chaves servem para os dois operandos:
 
@@ -212,14 +206,14 @@ Como A = B = 192, as mesmas chaves servem para os dois operandos:
 | -------- | ----- | ------------- | ------------ | --------- | --------- | --------- | ------------ | --------- | --------- | --------- | --------- |
 | A = B    | 192   | 0 (baixo)     | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Deixe as chaves `SW8` e `SW4` para cima, todas as outras para baixo → monta 192.
 2. Aperte e solte `KEY0` para guardar 192 como operando A.
 3. Não mexa em mais nada: o operando B já está com o mesmo valor (192) nas chaves.
 4. O resultado (384) aparece direto nos displays (circuito combinacional).
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = B = 192 (exp 8, frac `11000000`):
 
@@ -229,8 +223,6 @@ Com A = B = 192 (exp 8, frac `11000000`):
 4. **Normalização:** como houve carry-out, o circuito desloca a fração 1 bit à direita e incrementa o expoente: `expn = 8 + 1 = 9`; `fracn = sum(8 downto 1) = 11000000` (192).
 
 Resultado: sinal `+`, expoente 9, fração 192 (`11000000` = `0xC0`). Em decimal: `192 / 256 × 2^9 = 0,75 × 512 = 384`.
-
-##### Lendo o resultado nos displays:
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -247,8 +239,6 @@ Resultado: sinal `+`, expoente 9, fração 192 (`11000000` = `0xC0`). Em decimal
 
 Este caso testa um deslocamento pequeno (1 bit) no 4º estágio, complementando o Caso 6 (deslocamento de 5 bits) com um exemplo mais simples do mesmo mecanismo.
 
-##### Escrevendo os números no formato de 13 bits:
-
 **Para o 192** (mesmo cálculo do Caso 1):
 
 - expoente = 8 (`1000`); fração = 192 (`11000000`).
@@ -258,21 +248,19 @@ Este caso testa um deslocamento pequeno (1 bit) no 4º estágio, complementando 
 - Primeira potência de 2 acima de 128 → `2^8 = 256`, então expoente = 8 (`1000`).
 - `128 / 256 = 0,5`; `× 256 = 128` → fração = 128 = `10000000`.
 
-##### Quais chaves `SW` acionar:
-
 | Operando | Valor | `SW9` (sinal) | `SW8`        | `SW7`     | `SW6`     | `SW5`     | `SW4`        | `SW3`     | `SW2`     | `SW1`     | `SW0`     |
 | -------- | ----- | ------------- | ------------ | --------- | --------- | --------- | ------------ | --------- | --------- | --------- | --------- |
 | A        | +192  | 0 (baixo)     | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
 | B        | −128  | **1 (cima)**  | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo)    | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Suba `SW8` e `SW4` (demais para baixo) → monta 192.
 2. Aperte e solte `KEY0` para guardar 192 como operando A.
 3. Suba `SW9` (sinal negativo) e abaixe `SW4`, mantendo `SW8` levantado → representa −128 como operando B.
 4. O resultado (64) aparece direto nos displays.
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = 192 (exp 8, frac `11000000`, sinal +) e B = 128 (exp 8, frac `10000000`, sinal −):
 
@@ -282,8 +270,6 @@ Com A = 192 (exp 8, frac `11000000`, sinal +) e B = 128 (exp 8, frac `10000000`,
 4. **Normalização:** contando zeros à esquerda em `01000000`, o primeiro `1` aparece logo no bit 6 → `leado = 1`. Como `leado (1)` não é maior que `expb (8)`, é o caso normal: desloca a fração 1 bit à esquerda e decrementa o expoente: `expn = 8 − 1 = 7`; `fracn = 10000000` (128).
 
 Resultado: sinal `+`, expoente 7, fração 128 (`10000000` = `0x80`). Em decimal: `128 / 256 × 2^7 = 0,5 × 128 = 64`. E de fato 192 − 128 = 64.
-
-##### Lendo o resultado nos displays:
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -300,8 +286,6 @@ Resultado: sinal `+`, expoente 7, fração 128 (`10000000` = `0x80`). Em decimal
 
 Este caso mostra um segundo caminho para o resultado ser forçado a zero: não por empate exato de magnitudes (como no Caso 4), mas porque a diferença real é menor do que o menor número normalizado representável no formato (`0,5 × 2⁰ = 0,5`).
 
-##### Escrevendo os números no formato de 13 bits:
-
 **Para o 2,0625:**
 
 - Primeira potência de 2 acima de 2,0625 → `2^2 = 4`, então expoente = 2 (`0010`).
@@ -312,21 +296,19 @@ Este caso mostra um segundo caminho para o resultado ser forçado a zero: não p
 - Primeira potência de 2 acima de 2 → `2^2 = 4` (não pode ser `2^1 = 2`, pois `2 / 2 = 1,0` fica fora da faixa `[0,5 , 1)`), então expoente = 2.
 - `2 / 4 = 0,5`; `× 256 = 128` → fração = 128 = `10000000`.
 
-##### Quais chaves `SW` acionar:
-
 | Operando | Valor   | `SW9` (sinal) | `SW8`     | `SW7`     | `SW6`        | `SW5`     | `SW4`     | `SW3`     | `SW2`     | `SW1`     | `SW0`        |
 | -------- | ------- | ------------- | --------- | --------- | ------------ | --------- | --------- | --------- | --------- | --------- | ------------ |
 | A        | +2,0625 | 0 (baixo)     | 0 (baixo) | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | **1 (cima)** |
 | B        | −2      | **1 (cima)**  | 0 (baixo) | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo)    |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Suba `SW6` e `SW0` (demais para baixo) → monta 2,0625.
 2. Aperte e solte `KEY0` para guardar como operando A.
 3. Suba `SW9` (sinal negativo), mantenha `SW6` levantado, abaixe `SW0` → representa −2 como operando B.
 4. O resultado (zero) aparece direto nos displays.
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = 2,0625 (exp 2, frac `10000100`, sinal +) e B = 2 (exp 2, frac `10000000`, sinal −):
 
@@ -336,8 +318,6 @@ Com A = 2,0625 (exp 2, frac `10000100`, sinal +) e B = 2 (exp 2, frac `10000000`
 4. **Normalização:** contando zeros à esquerda em `00000100`: o primeiro `1` só aparece no bit 2, então `leado = 5`. Como `leado (5) > expb (2)`, o circuito reconhece que o deslocamento necessário é maior do que o próprio expoente disponível (o número é pequeno demais para ser normalizado) e força `expn = 0`, `fracn = 0`.
 
 Resultado: expoente 0, fração 0 → zero. Como A (positivo) foi o "grande" desta vez, `sign_out = 0`, então o `HEX3` fica apagado, diferente do Caso 4, onde o "grande" era o operando negativo.
-
-##### Lendo o resultado nos displays:
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -352,9 +332,7 @@ Resultado: expoente 0, fração 0 → zero. Como A (positivo) foi o "grande" des
 
 #### Caso 4: 8 − 8 = 0 (resultado nulo)
 
-Este caso valida a condição especial de zero: quando o resultado é pequeno demais para ser normalizado, o circuito força expoente e fração em zero.
-
-##### Escrevendo os números no formato de 13 bits:
+Este caso valida a condição especial de zero: quando o resultado é pequeno demais para ser normalizado, o circuito força expoente e fração em zero. No entanto, como descobrimos durante a apresentação (será detalhado no Caso 7), alguns casos de resultado nulo mostram o expoente diferente de zero, embora a fração seja sempre nula.
 
 **Para o 8:**
 
@@ -363,20 +341,18 @@ Este caso valida a condição especial de zero: quando o resultado é pequeno de
 
 O segundo operando é o mesmo valor (8), mas com o sinal negativo, para fazer `8 + (−8)`.
 
-##### Quais chaves `SW` acionar:
-
 | Operando | Valor | `SW9` (sinal) | `SW8`     | `SW7`        | `SW6`     | `SW5`     | `SW4`     | `SW3`     | `SW2`     | `SW1`     | `SW0`     |
 | -------- | ----- | ------------- | --------- | ------------ | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
 | A        | +8    | 0 (baixo)     | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
 | B        | −8    | **1 (cima)**  | 0 (baixo) | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Monte +8 nas chaves (só `SW7` para cima) e aperte `KEY0` para guardar como operando A.
 2. Suba também `SW9` (sinal negativo), mantendo `SW7` para cima → as chaves agora representam −8 (operando B).
 3. O resultado (zero) aparece direto nos displays.
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = +8 e B = −8 (ambos exp 4, frac `10000000`):
 
@@ -390,8 +366,6 @@ Resultado: expoente 0, fração 0, ou seja, zero.
 > **Por que o sinal "sobra" apesar do resultado ser zero?** Porque o `sign_out` é decidido logo no 1º estágio do `fp_adder`, antes de qualquer soma, apenas com uma comparação estrita (`>`) entre as magnitudes (`exp1&frac1` × `exp2&frac2`). Se os valores são exatamente iguais (como 8 e 8), ninguém é “maior”, o circuito cai no `else` e copia o sinal do segundo operando — que neste teste é negativo. Esse sinal fica gravado em `signb` e vai direto para `sign_out`, sem nunca ser reavaliado.
 >
 > O quarto estágio, bem mais tarde, detecta que o resultado é zero e zera `exp_out` e `frac_out`, mas já não consegue “avisar” o primeiro estágio para também zerar o sinal — ele já foi definido e propagado. Resultado: os dígitos mostram zero corretamente, mas o traço negativo pode continuar aparecendo no `HEX3`.
-
-##### Lendo o resultado nos displays:
 
 | Display   | Mostra                     | Neste exemplo                               |
 | --------- | -------------------------- | ------------------------------------------- |
@@ -407,9 +381,7 @@ Resultado: expoente 0, fração 0, ou seja, zero.
 
 #### Caso 5: 16384 + 0,984375 ≈ 16384 (operando pequeno "engolido")
 
-Este caso mostra o que acontece quando a diferença de expoentes entre os dois operandos é grande demais: a fração do operando menor desliza para fora de todos os 8 bits durante o alinhamento e some por completo, como se fosse somado zero.
-
-##### Escrevendo os números no formato de 13 bits:
+Este caso mostra o que acontece quando a diferença de expoentes entre os dois operandos é grande demais. A fração do operando menor desliza para fora de todos os 8 bits durante o alinhamento e some por completo, como se fosse somado zero.
 
 **Para o 16384:**
 
@@ -421,21 +393,19 @@ Este caso mostra o que acontece quando a diferença de expoentes entre os dois o
 - Primeira potência de 2 acima → `2^0 = 1`, então expoente = 0 (`0000`).
 - `0,984375 / 1 = 0,984375`; `× 256 = 252` → fração = 252 = `11111100`.
 
-##### Quais chaves `SW` acionar:
-
 | Operando | Valor     | `SW9` (sinal) | `SW8`        | `SW7`        | `SW6`        | `SW5`        | `SW4`        | `SW3`        | `SW2`        | `SW1`        | `SW0`        |
 | -------- | --------- | ------------- | ------------ | ------------ | ------------ | ------------ | ------------ | ------------ | ------------ | ------------ | ------------ |
 | A        | +16384    | 0 (baixo)     | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | 0 (baixo)    | 0 (baixo)    | 0 (baixo)    | 0 (baixo)    | 0 (baixo)    |
 | B        | +0,984375 | 0 (baixo)     | 0 (baixo)    | 0 (baixo)    | 0 (baixo)    | 0 (baixo)    | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Suba `SW8`, `SW7`, `SW6` e `SW5` (demais para baixo) → monta 16384.
 2. Aperte e solte `KEY0` para guardar como operando A.
 3. Abaixe `SW8` a `SW5` e suba todas as chaves da fração (`SW4` a `SW0`) → representa 0,984375 como operando B.
 4. O resultado aparece direto nos displays.
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = 16384 (exp 15, frac `10000000`) e B = 0,984375 (exp 0, frac `11111100`):
 
@@ -444,9 +414,7 @@ Com A = 16384 (exp 15, frac `10000000`) e B = 0,984375 (exp 0, frac `11111100`):
 3. **Soma:** sinais iguais → soma: `10000000 + 00000000 = 10000000` (128), sem carry.
 4. **Normalização:** a fração já começa com `1` → nenhum deslocamento. `expn = expb = 15`.
 
-Resultado: sinal `+`, expoente **15**, fração **128** (`0x80`), exatamente igual ao valor original de A. Somar 0,984 a 16384 não mudou nada visível no resultado, porque a diferença de magnitude é grande demais para o formato de 13 bits capturar.
-
-##### Lendo o resultado nos displays:
+Resultado: sinal `+`, expoente 15, fração 128 (`0x80`), exatamente igual ao valor original de A. Somar 0,984 a 16384 não mudou nada visível no resultado, porque a diferença de magnitude é grande demais para o formato de 13 bits capturar.
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -461,9 +429,7 @@ Resultado: sinal `+`, expoente **15**, fração **128** (`0x80`), exatamente igu
 
 #### Caso 6: 132 − 128 = 4 (deslocamento de 5 bits na normalização)
 
-Este caso testa o segmento de contagem/deslocamento de zeros à esquerda no 4º estágio, usado quando a subtração produz um resultado com vários bits mais significativos zerados. Escolhemos um par de números com deslocamento maior (5 bits) para deixar bem evidente o "muito deslocamento" pedido pela professora nesta etapa.
-
-##### Escrevendo os números no formato de 13 bits:
+Este caso testa o segmento de contagem/deslocamento de zeros à esquerda no 4º estágio, usado quando a subtração produz um resultado com vários bits mais significativos zerados. Escolhemos um par de números com deslocamento maior (5 bits) para deixar bem evidente o grande deslocamento nesta etapa.
 
 **Para o 132:**
 
@@ -477,32 +443,28 @@ Este caso testa o segmento de contagem/deslocamento de zeros à esquerda no 4º 
 
 Como é uma subtração (132 − 128), o 128 entra com o bit de sinal ligado (negativo): o somador soma quando os sinais são iguais e subtrai quando são diferentes, então isso equivale a calcular `132 + (−128)`.
 
-##### Quais chaves `SW` acionar:
-
 | Operando | Valor | `SW9` (sinal) | `SW8`        | `SW7`     | `SW6`     | `SW5`     | `SW4`     | `SW3`     | `SW2`     | `SW1`     | `SW0`        |
 | -------- | ----- | ------------- | ------------ | --------- | --------- | --------- | --------- | --------- | --------- | --------- | ------------ |
 | A        | +132  | 0 (baixo)     | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | **1 (cima)** |
 | B        | −128  | **1 (cima)**  | **1 (cima)** | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo) | 0 (baixo)    |
 
-##### Roteiro para testar na placa:
+**Roteiro para testar na placa:**
 
 1. Suba `SW8` e `SW0` (demais para baixo) → monta 132.
 2. Aperte e solte `KEY0` para guardar como operando A.
 3. Suba também `SW9` (sinal negativo), mantenha `SW8` levantado e abaixe `SW0` → representa −128 como operando B.
 4. O resultado (4) aparece direto nos displays.
 
-##### A conta passo a passo (os 4 estágios):
+**Os 4 estágios:**
 
 Com A = 132 (exp 8, frac `10000100`, sinal +) e B = 128 (exp 8, frac `10000000`, sinal −):
 
 1. **Ordenação:** mesmo expoente, então o circuito compara as frações: `132 > 128`, logo A (132) vira o "número grande" (`b`) e B (128) o "número pequeno" (`s`).
 2. **Alinhamento:** `exp_diff = 8 − 8 = 0`, nenhuma fração desliza.
 3. **Subtração:** sinais diferentes → subtrai: `10000100` (132) `− 10000000` (128) `= 00000100` (4), sem carry (`sum(8) = 0`).
-4. **Normalização:** contando os zeros à esquerda em `00000100`, o primeiro `1` só aparece no bit 2 → **`leado = 5`**. Como `leado (5)` não é maior que `expb (8)`, é o caso normal: o circuito desloca a fração **5 bits** à esquerda e decrementa o expoente: `expn = 8 − 5 = 3`; `fracn = 10000000` (128).
+4. **Normalização:** contando os zeros à esquerda em `00000100`, o primeiro `1` só aparece no bit 2 → `leado = 5`. Como `leado (5)` não é maior que `expb (8)`, é o caso normal: o circuito desloca a fração 5 bits à esquerda e decrementa o expoente: `expn = 8 − 5 = 3`; `fracn = 10000000` (128).
 
-Resultado: sinal `+` (herdado do operando de maior magnitude, 132), expoente **3**, fração **128** (`10000000` = `0x80`). Em decimal: `128 / 256 × 2^3 = 0,5 × 8 = 4`.
-
-##### Lendo o resultado nos displays:
+Resultado: sinal `+` (herdado do operando de maior magnitude, 132), expoente 3, fração 128 (`10000000` = `0x80`). Em decimal: `128 / 256 × 2^3 = 0,5 × 8 = 4`.
 
 | Display | Mostra                   | Neste exemplo      |
 | ------- | ------------------------ | ------------------ |
@@ -517,22 +479,20 @@ Resultado: sinal `+` (herdado do operando de maior magnitude, 132), expoente **3
 
 #### Caso 7 (sem foto): 992 − 992 = 0, mas o expoente não zera
 
-Este caso descobrimos durante a apresentação do trabalho, e o descrevemos aqui mais como uma curiosidade, por isso não registramos foto. Basicamente, para alguns números, quando subtraídos de si mesmos, o resultado do expoente é diferente de zero, como descrito a seguir para o número 992.
+Descobrimos este caso durante a apresentação do trabalho, por isso não registramos foto. Nele, como no Caso 4, um número é subtraído de si mesmo e, assim, a fração é zerada. Contudo, há casos em que o expoente continua diferente de zero, como em 992 - 992.
 
-##### 1. Escrevendo os números no formato de 13 bits
+**Para o 992:**
 
-Para o 992: a primeira potência de 2 acima dele é `2^10 = 1024`, então o expoente é **10** (`1010`). `992 / 1024 = 0,96875`, e multiplicando por 256 dá `248`, então a fração é **248** (`11111000`).
+- A primeira potência de 2 acima dele é `2^10 = 1024`, então o expoente é 10 (`1010`). `992 / 1024 = 0,96875`, e multiplicando por 256 dá `248`, então a fração é 248 (`11111000`).
 
 O segundo operando é o mesmo valor, só que negativo, pra fazer `992 + (−992)`.
-
-##### 2. Quais chaves `SW` acionar
 
 | Operando | Valor | `SW9` (sinal) | `SW8`        | `SW7`     | `SW6`        | `SW5`     | `SW4`        | `SW3`        | `SW2`        | `SW1`        | `SW0`     |
 | -------- | ----- | ------------- | ------------ | --------- | ------------ | --------- | ------------ | ------------ | ------------ | ------------ | --------- |
 | A        | +992  | 0 (baixo)     | **1 (cima)** | 0 (baixo) | **1 (cima)** | 0 (baixo) | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | 0 (baixo) |
 | B        | −992  | **1 (cima)**  | **1 (cima)** | 0 (baixo) | **1 (cima)** | 0 (baixo) | **1 (cima)** | **1 (cima)** | **1 (cima)** | **1 (cima)** | 0 (baixo) |
 
-##### 3. Roteiro para testar na placa
+**Roteiro para testar na placa**
 
 1. Suba `SW8` e `SW6` (expoente 10), demais chaves de expoente para baixo.
 2. Suba `SW4`, `SW3`, `SW2` e `SW1` (fração 248), deixe `SW0` para baixo.
@@ -540,18 +500,16 @@ O segundo operando é o mesmo valor, só que negativo, pra fazer `992 + (−992)
 4. Suba também `SW9` (sinal negativo), mantendo o resto igual. Isso representa −992 como operando B.
 5. O resultado aparece direto nos displays.
 
-##### 4. A conta passo a passo (os 4 estágios)
+**Os 4 estágios:**
 
 Com A = +992 (exp 10, frac `11111000`) e B = −992 (exp 10, frac `11111000`):
 
-1. **Ordenação:** magnitude idêntica nos dois operandos, então a comparação `exp1&frac1 > exp2&frac2` dá falso, e o VHDL cai no `else`: **B** vira o número grande (`b`) e **A** o número pequeno (`s`). Isso leva o sinal negativo de B para `signb`, o mesmo mecanismo do Caso 4.
+1. **Ordenação:** magnitude idêntica nos dois operandos, então a comparação `exp1&frac1 > exp2&frac2` dá falso, e o VHDL cai no `else`: B vira o número grande (`b`) e A o número pequeno (`s`). Isso leva o sinal negativo de B para `signb`, o mesmo mecanismo do Caso 4.
 2. **Alinhamento:** `exp_diff = 10 − 10 = 0`, nenhuma fração desliza.
 3. **Subtração:** sinais diferentes, então `11111000 − 11111000 = 00000000`, sem carry.
 4. **Normalização:** o resultado é todo zero, então nenhum bit de `sum(7 downto 1)` está em `'1'`, e o contador de zeros cai no valor padrão do `case`: `leado = "111"` (7 em decimal). O sinal `leado` só tem 3 bits, então esse é o valor máximo que ele consegue representar, mesmo quando o resultado tem, na prática, 8 posições zeradas. O teste seguinte do código é `leado > expb`. Com `expb = 10`, a comparação `7 > 10` é falsa, então o circuito não entra no ramo que zera o resultado, e cai no ramo normal: `expn = expb − leado = 10 − 7 = 3`; `fracn = sum_norm`, que para `leado = "111"` é `sum(0) & "0000000"`, ou seja `00000000`.
 
-Resultado: sinal negativo (herdado de B), expoente **3** (`0011`), fração **0**. A fração e o sinal saem certos, mas o expoente sai 3 em vez de 0.
-
-##### 5. Lendo o resultado nos displays
+Resultado: sinal negativo (herdado de B), expoente 3 (`0011`), fração 0. A fração e o sinal saem certos, mas o expoente sai 3 em vez de 0.
 
 | Display | Mostra                   | Neste exemplo                        |
 | ------- | ------------------------ | ------------------------------------ |
@@ -562,4 +520,4 @@ Resultado: sinal negativo (herdado de B), expoente **3** (`0011`), fração **0*
 
 Por que isso não acontece no Caso 4 (`8 − 8`)? Lá o expoente do 8 é 4. A mesma conta dá `leado = 7`, e o teste `leado (7) > expb (4)` é verdadeiro, então o circuito cai no ramo que força tudo a zero. O ponto de virada é o expoente 7: `leado (7) > expb (7)` já é falso, então o circuito cai no ramo normal e calcula `expn = 7 − 7 = 0`, que por coincidência ainda dá certo. O erro só fica visível a partir do expoente 8, quando `expn = expb − 7` deixa de dar zero.
 
-A causa é o próprio sinal `leado`, declarado no VHDL com só 3 bits (`signal leado : unsigned(2 downto 0)`). Três bits alcançam no máximo o valor 7, mas para sinalizar "nenhum bit 1 encontrado nos 8 bits da soma" seria preciso o valor 8, que não cabe nesse tamanho. O teste `leado > expb` só detecta esse underflow por coincidência, enquanto o expoente for pequeno o bastante. Não é erro do grupo, é limitação do algoritmo original do livro.
+A causa é o próprio sinal `leado`, declarado no VHDL com só 3 bits (`signal leado : unsigned(2 downto 0)`). Três bits alcançam no máximo o valor 7, mas para sinalizar "nenhum bit 1 encontrado nos 8 bits da soma" seria preciso o valor 8, que não cabe nesse tamanho. O teste `leado > expb` só detecta esse underflow por coincidência, enquanto o expoente for pequeno o bastante. Uma pequena limitação do algoritmo original do livro.

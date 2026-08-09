@@ -8,10 +8,10 @@ refatoração do circuito de teste e tirar dúvidas sobre o algoritmo do livro.
 
 ### 5.1 Como conduzimos o uso da ferramenta
 
-Não pedimos "faça o projeto", primeiro entendemos o
+Primeiro entendemos o
 artigo (Pong P. Chu, seção 3.7.4), depois usamos a IA para checar nosso
 entendimento, gerar rascunhos e, principalmente, para nos forçar a justificar
-cada decisão. Além de termos utilizado para nos auxiliar no uso do questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema.
+cada decisão. Além de termos utilizado para nos auxiliar no uso do Questa, uma vez que nenhum integrante do grupo tinha muita familiaridade com o sistema.
 
 #### Prompts utilizados (seleção)
 
@@ -105,10 +105,10 @@ Compiler Database Interface (quartus_cdb)
 ```
 
 **A correção humana:** entendemos a diferença entre os dois comandos. A
-_Elaboration_ só monta a hierarquia; ela **não gera a netlist sintetizada**, e
+_Elaboration_ só monta a hierarquia; ela não gera a netlist sintetizada, e
 o _Partition Merge_ (`quartus_cdb`) precisa dessa netlist. A solução foi rodar
-**Start Analysis & Synthesis** (`Ctrl+K`) antes do Partition Merge. Documentamos
-o erro e a causa no nosso passo a passo, porque é um tropeço fácil para quem
+Start Analysis & Synthesis (`Ctrl+K`) antes do Partition Merge. Documentamos
+o erro e a causa no nosso passo a passo, porque é um erro fácil para quem
 vem do Lab 2 (onde a Elaboration bastava).
 
 ---
