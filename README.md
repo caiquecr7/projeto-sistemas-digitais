@@ -1,6 +1,4 @@
-# projeto-sistemas-digitais
-
-# Tutorial: Implementação de Somador Ponto Flutuante na DE10 Lite
+# Projeto Sistemas Digitais
 
 **Autores:** Caique Castro Rodrigues, Gustavo Soares Gama Maldonado, Henrique Chaves Lopes
 
